@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PASS OFF Builder</title>
+<script src="https://unpkg.com/docx@8.5.0/build/index.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #f5f4f0;
+    --surface: #ffffff;
+    --surface2: #f0efe9;
+    --border: #e0ddd5;
+    --border2: #c8c5bb;
+    --text: #1a1916;
+    --text2: #6b6860;
+    --text3: #9b998f;
+    --purple: #4a3fb5;
+    --purple-light: #eeedfc;
+    --purple-mid: #a09ae0;
+    --blue: #1a5fa5;
+    --blue-light: #e6f0fb;
+    --red: #a32020;
+    --red-light: #fceaea;
+    --green: #2a6e2a;
+    --green-light: #e8f4e8;
+    --amber: #7a5010;
+    --amber-light: #fdf3e0;
+    --radius: 10px;
+    --radius-sm: 6px;
+    --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 8px rgba(0,0,0,0.04);
+  }
+
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  /* ── Header ── */
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 56px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: var(--shadow);
+  }
+  .logo { display: flex; align-items: center; gap: 10px; }
+  .logo-icon {
+    width: 32px; height: 32px;
+    background: var(--purple);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    color: white; font-size: 16px; font-weight: 700;
+  }
+  .logo-text { font-size: 16px; font-weight: 600; color: var(--text); }
+  .logo-sub { font-size: 11px; color: var(--text3); margin-top: -2px; }
+
+  /* ── Layout ── */
+  .main { max-width: 1100px; margin: 0 auto; padding: 2rem 1.5rem; display: grid; grid-template-columns: 380px 1fr; gap: 1.5rem; }
+  @media (max-width: 800px) { .main { grid-template-columns: 1fr; } }
+
+  /* ── Cards ── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+  }
+  .card-header {
+    padding: 1rem 1.25rem 0.75rem;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .card-icon { font-size: 16px; }
+  .card-title { font-size: 14px; font-weight: 600; color: var(--text); }
+  .card-body { padding: 1.25rem; }
+
+  /* ── Form ── */
+  label { font-size: 12px; font-weight: 500; color: var(--text2); display: block; margin-bottom: 4px; }
+  textarea, select, input[type="text"] {
+    width: 100%;
+    font-family: inherit;
+    font-size: 13px;
+    color: var(--text);
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 8px 10px;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  textarea:focus, select:focus, input:focus {
+    outline: none;
+    border-color: var(--purple-mid);
+    box-shadow: 0 0 0 3px rgba(74,63,181,0.1);
+    background: var(--surface);
+  }
+  textarea { font-family: 'Courier New', monospace; font-size: 12px; resize: vertical; min-height: 130px; }
+  .field { margin-bottom: 12px; }
+
+  /* ── Preview ── */
+  .preview-box {
+    background: var(--purple-light);
+    border: 1px solid var(--purple-mid);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+    margin-bottom: 12px;
+    display: none;
+    font-size: 12px;
+  }
+  .preview-label { font-size: 11px; font-weight: 600; color: var(--purple); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.05em; }
+  .preview-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip {
+    background: var(--surface);
+    border: 1px solid var(--purple-mid);
+    border-radius: 20px;
+    padding: 2px 10px;
+    font-size: 11px;
+  }
+  .chip-k { color: var(--text3); }
+  .chip-v { color: var(--text); font-weight: 600; }
+
+  /* ── Buttons ── */
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 8px 16px; border-radius: var(--radius-sm);
+    font-size: 13px; font-weight: 500; cursor: pointer;
+    border: 1px solid transparent; transition: all 0.15s;
+  }
+  .btn-primary { background: var(--purple); color: white; border-color: var(--purple); }
+  .btn-primary:hover { background: #3a2fa5; }
+  .btn-outline { background: var(--surface); color: var(--text); border-color: var(--border2); }
+  .btn-outline:hover { background: var(--surface2); }
+  .btn-danger { background: var(--red-light); color: var(--red); border-color: #f09595; }
+  .btn-danger:hover { background: #f7c1c1; }
+  .btn-success { background: var(--green); color: white; }
+  .btn-success:hover { background: #1e5a1e; }
+  .btn-sm { padding: 4px 10px; font-size: 12px; }
+  .btn-full { width: 100%; justify-content: center; }
+  .btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .success-flash {
+    color: var(--green); font-size: 12px; font-weight: 500;
+    margin-top: 8px; display: none; animation: fadeOut 2.5s forwards;
+  }
+  @keyframes fadeOut { 0%{opacity:1} 70%{opacity:1} 100%{opacity:0} }
+
+  /* ── General Info ── */
+  .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+  /* ── Tabs ── */
+  .tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border); }
+  .tab {
+    padding: 10px 16px; font-size: 13px; font-weight: 500; cursor: pointer;
+    border-bottom: 2px solid transparent; color: var(--text3);
+    transition: all 0.15s; white-space: nowrap;
+  }
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--purple); border-bottom-color: var(--purple); }
+  .count-badge {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 18px; height: 18px; background: var(--surface2);
+    border-radius: 9px; font-size: 10px; font-weight: 700;
+    padding: 0 5px; margin-left: 5px; color: var(--text2);
+  }
+  .tab.active .count-badge { background: var(--purple-light); color: var(--purple); }
+
+  .tab-panel { display: none; padding: 1.25rem; }
+  .tab-panel.active { display: block; }
+
+  /* ── Tables ── */
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th {
+    font-size: 11px; font-weight: 600; color: var(--text2); text-align: left;
+    padding: 8px 10px; background: var(--surface2);
+    border-bottom: 1px solid var(--border); white-space: nowrap;
+  }
+  td { padding: 8px 10px; border-bottom: 1px solid var(--border); color: var(--text); vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--surface2); }
+  .empty { text-align: center; padding: 2.5rem; color: var(--text3); font-size: 13px; }
+  .empty-icon { font-size: 28px; margin-bottom: 8px; }
+  .lpn-code {
+    font-family: 'Courier New', monospace; font-size: 11px;
+    background: var(--surface2); padding: 2px 7px;
+    border-radius: 4px; border: 1px solid var(--border);
+  }
+  .qty-pos { color: var(--green); font-weight: 600; }
+  .qty-neg { color: var(--red); font-weight: 600; }
+  .del-btn {
+    background: none; border: none; cursor: pointer; color: var(--text3);
+    font-size: 14px; padding: 2px 6px; border-radius: 4px;
+    transition: all 0.1s;
+  }
+  .del-btn:hover { color: var(--red); background: var(--red-light); }
+
+  /* ── Observations ── */
+  .obs-area { width: 100%; min-height: 100px; }
+
+  /* ── Export bar ── */
+  .export-bar {
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    padding: 1rem 1.5rem;
+    display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+    position: sticky; bottom: 0;
+    box-shadow: 0 -2px 10px rgba(0,0,0,0.07);
+  }
+  .export-info { font-size: 12px; color: var(--text2); }
+  .export-info strong { color: var(--text); }
+
+  /* ── Toast ── */
+  #toast {
+    position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%) translateY(20px);
+    background: #1a1916; color: white; padding: 10px 20px; border-radius: 20px;
+    font-size: 13px; opacity: 0; transition: all 0.3s; pointer-events: none; z-index: 999;
+  }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* ── Obs section ── */
+  .section-divider {
+    font-size: 11px; font-weight: 600; color: var(--text3); text-transform: uppercase;
+    letter-spacing: 0.06em; margin: 1rem 0 0.5rem;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">P</div>
+    <div>
+      <div class="logo-text">PASS OFF Builder</div>
+      <div class="logo-sub">Shift Handoff Report Tool</div>
+    </div>
+  </div>
+  <div class="btn-row">
+    <button class="btn btn-outline btn-sm" onclick="clearAll()">🗑 Clear all</button>
+    <button class="btn btn-success" onclick="exportWord()">⬇ Export Word (.docx)</button>
+  </div>
+</header>
+
+<div class="main">
+
+  <!-- LEFT: Input panel -->
+  <div style="display:flex; flex-direction:column; gap:1rem;">
+
+    <!-- General Info -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-icon">🧾</span>
+        <span class="card-title">General Information</span>
+      </div>
+      <div class="card-body">
+        <div class="info-grid">
+          <div class="field">
+            <label>Assigned Line</label>
+            <input type="text" id="gLine" placeholder="e.g. Sollich 2 / LESL2">
+          </div>
+          <div class="field">
+            <label>Assignment Date</label>
+            <input type="text" id="gDate" placeholder="MM/DD/YYYY">
+          </div>
+          <div class="field">
+            <label>Product Item</label>
+            <input type="text" id="gProduct" placeholder="e.g. 30739-CASE36">
+          </div>
+          <div class="field">
+            <label>Total Pallets Created</label>
+            <input type="text" id="gPallets" placeholder="e.g. 36 pallets / 6 partial">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Paste & Parse -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-icon">📋</span>
+        <span class="card-title">Paste System Entry</span>
+      </div>
+      <div class="card-body">
+        <div class="field">
+          <label>Paste the adjustment text from the system</label>
+          <textarea id="pasteInput" placeholder="Item10232&#10;DescriptionChocolate - Milk - Clasen 63137&#10;Quantity-86.62&#10;UnitsPound&#10;Serial/Lot Number  Bin  Status  Expiration Date  Quantity&#10;6051BT06SL02  R165674  OK  2/20/2027  -86.62"></textarea>
+        </div>
+
+        <div id="previewBox" class="preview-box">
+          <div class="preview-label">Detected fields</div>
+          <div class="preview-chips" id="previewChips"></div>
+        </div>
+
+        <div class="field">
+          <label>Entry type</label>
+          <select id="adjType">
+            <option value="adj">🔧 Adjustment</option>
+            <option value="scrap">♻️ Scrap</option>
+            <option value="mov">🔄 Movement</option>
+            <option value="cycle">📦 Cycle Count</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label>Reason</label>
+          <select id="adjReason">
+            <option value="Initial Inventory Mid Shift Real Qty in Physical">Initial Inventory Mid Shift</option>
+            <option value="Initial Inventory Chocolate Mid Shift Real Qty in Physical">Initial Inventory Chocolate Mid Shift</option>
+            <option value="End Inventory Kitchen Real Qty in Physical">End Inventory Kitchen</option>
+            <option value="End Shift Scrap Pouches Real Qty in Physical">End Shift Scrap Pouches</option>
+            <option value="Mid Shift Scrap Real Qty in Physical">Mid Shift Scrap</option>
+            <option value="Full Shift Scrap SafetyChain Real Qty in Physical">Full Shift Scrap SafetyChain</option>
+            <option value="custom">✏️ Write custom reason...</option>
+          </select>
+        </div>
+
+        <div class="field" id="customGroup" style="display:none;">
+          <label>Custom reason</label>
+          <input type="text" id="customReason" placeholder="Type the reason here...">
+        </div>
+
+        <button class="btn btn-primary btn-full" onclick="parseAndAdd()">+ Add to table</button>
+        <div class="success-flash" id="successFlash">✓ Entry added successfully</div>
+      </div>
+    </div>
+
+    <!-- Observations -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-icon">✍️</span>
+        <span class="card-title">General Observations</span>
+      </div>
+      <div class="card-body">
+        <textarea id="observations" class="obs-area" placeholder="Describe what happened during the shift: incidents, notes, production summary..."></textarea>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- RIGHT: Tables -->
+  <div class="card" style="align-self:start;">
+    <div class="tabs" id="tabsRow">
+      <div class="tab active" data-tab="adj" onclick="showTab('adj')">🔧 Adjustments <span class="count-badge" id="cnt-adj">0</span></div>
+      <div class="tab" data-tab="scrap" onclick="showTab('scrap')">♻️ Scrap <span class="count-badge" id="cnt-scrap">0</span></div>
+      <div class="tab" data-tab="mov" onclick="showTab('mov')">🔄 Movements <span class="count-badge" id="cnt-mov">0</span></div>
+      <div class="tab" data-tab="cycle" onclick="showTab('cycle')">📦 Cycle Count <span class="count-badge" id="cnt-cycle">0</span></div>
+    </div>
+
+    <!-- Adjustments -->
+    <div class="tab-panel active" id="panel-adj">
+      <div class="table-wrap">
+        <table id="tbl-adj">
+          <thead><tr><th>Ítem</th><th>Adjusted Qty</th><th>LPN</th><th>Reason</th><th></th></tr></thead>
+          <tbody id="body-adj"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Scrap -->
+    <div class="tab-panel" id="panel-scrap">
+      <div class="table-wrap">
+        <table id="tbl-scrap">
+          <thead><tr><th>Ítem</th><th>Adjusted Qty</th><th>LPN</th><th>Reason</th><th></th></tr></thead>
+          <tbody id="body-scrap"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Movements -->
+    <div class="tab-panel" id="panel-mov">
+      <div class="table-wrap">
+        <table id="tbl-mov">
+          <thead><tr><th>Ítem</th><th>LPN</th><th>Previous Location</th><th>New Location</th><th>Reason</th><th></th></tr></thead>
+          <tbody id="body-mov"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Cycle Count -->
+    <div class="tab-panel" id="panel-cycle">
+      <div class="table-wrap">
+        <table id="tbl-cycle">
+          <thead><tr><th>Ítem</th><th>Fully Found?</th><th>LPN</th><th>Detail</th><th></th></tr></thead>
+          <tbody id="body-cycle"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Export bar -->
+<div class="export-bar">
+  <div class="export-info">
+    <strong id="totalCount">0</strong> total entries across all tables
+  </div>
+  <div class="btn-row">
+    <button class="btn btn-outline" onclick="exportWord()">⬇ Export Word (.docx)</button>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ── State ──────────────────────────────────────────────
+const data = { adj: [], scrap: [], mov: [], cycle: [] };
+let activeTab = 'adj';
+
+// ── Init ──────────────────────────────────────────────
+document.getElementById('adjReason').addEventListener('change', function() {
+  document.getElementById('customGroup').style.display = this.value === 'custom' ? 'block' : 'none';
+});
+document.getElementById('pasteInput').addEventListener('input', livePreview);
+
+// Set today's date
+const today = new Date();
+document.getElementById('gDate').value = (today.getMonth()+1).toString().padStart(2,'0') + '/' + today.getDate().toString().padStart(2,'0') + '/' + today.getFullYear();
+
+// ── Parser ─────────────────────────────────────────────
+function parseText(text) {
+  const r = { item:'', qty:'', units:'', lpn:'', lot:'' };
+  if (!text.trim()) return r;
+
+  const itemM = text.match(/[Ii]tem\s*#?\s*(\d+)/);
+  if (itemM) r.item = itemM[1];
+
+  const qtyM = text.match(/[Qq]uantity\s*([+-]?\d+\.?\d*)/);
+  if (qtyM) r.qty = qtyM[1];
+
+  // Also try last number on a detail line as fallback qty
+  if (!r.qty) {
+    const lines = text.split('\n');
+    for (const l of lines.reverse()) {
+      const m = l.match(/([+-]?\d+\.?\d+)\s*$/);
+      if (m && Math.abs(parseFloat(m[1])) > 0) { r.qty = m[1]; break; }
+    }
+  }
+
+  const unitsM = text.match(/[Uu]nits?\s*([A-Za-z]+)/);
+  if (unitsM) {
+    const u = unitsM[1].toLowerCase();
+    r.units = u === 'pound' ? 'lb' : u === 'gallon' ? 'gal' : u === 'each' ? 'each' : unitsM[1];
+  }
+
+  const lpnM = text.match(/\b(R\d{5,7})\b/);
+  if (lpnM) r.lpn = lpnM[1];
+
+  // Lot: long alphanum before LPN
+  const lotM = text.match(/([A-Z0-9]{6,14})\s+(?:[A-Z0-9]+\s+)?R\d{5,7}/);
+  if (lotM) r.lot = lotM[1];
+
+  return r;
+}
+
+function livePreview() {
+  const p = parseText(document.getElementById('pasteInput').value);
+  const box = document.getElementById('previewBox');
+  const chips = document.getElementById('previewChips');
+  if (!p.item && !p.qty && !p.lpn) { box.style.display = 'none'; return; }
+  box.style.display = 'block';
+  const fields = [];
+  if (p.item) fields.push(['Item', p.item]);
+  if (p.qty)  fields.push(['Qty', p.qty + (p.units ? ' ' + p.units : '')]);
+  if (p.lpn)  fields.push(['LPN', p.lpn]);
+  if (p.lot)  fields.push(['Lot', p.lot]);
+  chips.innerHTML = fields.map(([k,v]) =>
+    `<div class="chip"><span class="chip-k">${k}: </span><span class="chip-v">${v}</span></div>`
+  ).join('');
+}
+
+// ── Add Entry ─────────────────────────────────────────
+function parseAndAdd() {
+  const text = document.getElementById('pasteInput').value.trim();
+  const type = document.getElementById('adjType').value;
+  const rs = document.getElementById('adjReason').value;
+  const reason = rs === 'custom' ? document.getElementById('customReason').value : rs;
+  const p = parseText(text);
+
+  if (!p.item && !p.qty) { showToast('⚠️ No valid data detected. Check the text.'); return; }
+
+  data[type].push({ ...p, reason });
+  renderTable(type);
+  updateCounts();
+
+  document.getElementById('pasteInput').value = '';
+  document.getElementById('previewBox').style.display = 'none';
+  const fl = document.getElementById('successFlash');
+  fl.style.display = 'block';
+  fl.style.animation = 'none';
+  setTimeout(() => { fl.style.animation = 'fadeOut 2.5s forwards'; }, 10);
+  setTimeout(() => { fl.style.display = 'none'; }, 2600);
+
+  if (type !== activeTab) showTab(type);
+}
+
+// ── Render Tables ──────────────────────────────────────
+function emptyRow(cols, icon, label) {
+  return `<tr><td colspan="${cols}"><div class="empty"><div class="empty-icon">${icon}</div>${label}</div></td></tr>`;
+}
+
+function renderTable(type) {
+  const tbody = document.getElementById('body-' + type);
+  if (!data[type].length) {
+    const map = { adj:[5,'🔧','No adjustments yet'], scrap:[5,'♻️','No scrap yet'], mov:[6,'🔄','No movements yet'], cycle:[5,'📦','No cycle counts yet'] };
+    const [cols, icon, label] = map[type];
+    tbody.innerHTML = emptyRow(cols, icon, label);
+    return;
+  }
+  tbody.innerHTML = data[type].map((e, i) => {
+    const qCls = e.qty ? (parseFloat(e.qty) < 0 ? 'qty-neg' : 'qty-pos') : '';
+    const qtyStr = e.qty ? `<span class="${qCls}">${e.qty}</span> ${e.units||''}` : '—';
+    const lpnHtml = e.lpn ? `<span class="lpn-code">${e.lpn}</span>` : '—';
+    const del = `<button class="del-btn" onclick="remove('${type}',${i})" title="Remove">✕</button>`;
+
+    if (type === 'adj' || type === 'scrap') return `<tr>
+      <td><strong>${e.item||'—'}</strong>${e.lot?`<br><small style="color:var(--text3);font-size:10px">${e.lot}</small>`:''}</td>
+      <td>${qtyStr}</td><td>${lpnHtml}</td>
+      <td style="color:var(--text2);font-size:11px">${e.reason||'—'}</td><td>${del}</td></tr>`;
+
+    if (type === 'mov') return `<tr>
+      <td><strong>${e.item||'—'}</strong></td><td>${lpnHtml}</td>
+      <td>—</td><td>—</td>
+      <td style="color:var(--text2);font-size:11px">${e.reason||'—'}</td><td>${del}</td></tr>`;
+
+    if (type === 'cycle') return `<tr>
+      <td><strong>${e.item||'—'}</strong></td><td>—</td>
+      <td>${lpnHtml}</td>
+      <td style="color:var(--text2);font-size:11px">${e.reason||'—'}</td><td>${del}</td></tr>`;
+  }).join('');
+}
+
+function remove(type, idx) {
+  data[type].splice(idx, 1);
+  renderTable(type);
+  updateCounts();
+}
+
+function updateCounts() {
+  let total = 0;
+  ['adj','scrap','mov','cycle'].forEach(t => {
+    const n = data[t].length;
+    document.getElementById('cnt-' + t).textContent = n;
+    total += n;
+  });
+  document.getElementById('totalCount').textContent = total;
+}
+
+function showTab(tab) {
+  document.querySelectorAll('.tab').forEach(el => {
+    el.classList.toggle('active', el.dataset.tab === tab);
+  });
+  document.querySelectorAll('.tab-panel').forEach(el => {
+    el.classList.toggle('active', el.id === 'panel-' + tab);
+  });
+  activeTab = tab;
+}
+
+function clearAll() {
+  if (!confirm('Clear all entries from all tables?')) return;
+  ['adj','scrap','mov','cycle'].forEach(t => { data[t] = []; renderTable(t); });
+  updateCounts();
+}
+
+['adj','scrap','mov','cycle'].forEach(renderTable);
+
+// ── Toast ──────────────────────────────────────────────
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+// ── Word Export ───────────────────────────────────────
+async function exportWord() {
+  const { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
+          AlignmentType, BorderStyle, WidthType, ShadingType, VerticalAlign, HeadingLevel } = docx;
+
+  const gLine    = document.getElementById('gLine').value || '—';
+  const gDate    = document.getElementById('gDate').value || '—';
+  const gProduct = document.getElementById('gProduct').value || '—';
+  const gPallets = document.getElementById('gPallets').value || '—';
+  const obs      = document.getElementById('observations').value || 'No observations.';
+
+  const border = { style: BorderStyle.SINGLE, size: 1, color: 'AAAAAA' };
+  const borders = { top: border, bottom: border, left: border, right: border };
+  const headerShading = { fill: '1E3A5F', type: ShadingType.CLEAR };
+  const subHeaderShading = { fill: '2E5090', type: ShadingType.CLEAR };
+  const altRowShading = { fill: 'EEF2F8', type: ShadingType.CLEAR };
+
+  const cellPad = { top: 80, bottom: 80, left: 120, right: 120 };
+
+  function hdr(text, color = 'FFFFFF') {
+    return new TableCell({
+      borders, shading: headerShading, margins: cellPad,
+      children: [new Paragraph({ children: [new TextRun({ text, bold: true, color, size: 20, font: 'Arial' })] })]
+    });
+  }
+
+  function cell(text, shade = false, bold = false) {
+    return new TableCell({
+      borders,
+      shading: shade ? altRowShading : { fill: 'FFFFFF', type: ShadingType.CLEAR },
+      margins: cellPad,
+      children: [new Paragraph({ children: [new TextRun({ text: text || '—', bold, size: 18, font: 'Arial' })] })]
+    });
+  }
+
+  function sectionTitle(icon, title) {
+    return new Paragraph({
+      spacing: { before: 280, after: 120 },
+      children: [new TextRun({ text: icon + ' ' + title, bold: true, size: 26, color: '1E3A5F', font: 'Arial' })]
+    });
+  }
+
+  // ── General Info table ──────────────────────────────
+  const infoTable = new Table({
+    width: { size: 9360, type: WidthType.DXA },
+    columnWidths: [2340, 2340, 2340, 2340],
+    rows: [
+      new TableRow({ children: [hdr('Assigned Line'), hdr('Date'), hdr('Product Item'), hdr('Total Pallets')] }),
+      new TableRow({ children: [cell(gLine), cell(gDate), cell(gProduct), cell(gPallets)] })
+    ]
+  });
+
+  // ── Adjustments table ───────────────────────────────
+  function makeAdjRows(entries) {
+    if (!entries.length) return [new TableRow({
+      children: ['Item','Adjusted Quantity','LPN','Reason'].map(h => hdr(h))
+    }), new TableRow({ children: [
+      new TableCell({ borders, margins: cellPad, columnSpan: 4,
+        children: [new Paragraph({ alignment: AlignmentType.CENTER,
+          children: [new TextRun({ text: 'No entries', color: '888888', size: 18, italics: true, font: 'Arial' })] })] })
+    ]})];
+    const rows = [new TableRow({ children: ['Ítem','Adjusted Quantity','LPN','Adjustment Reason'].map(h => hdr(h)) })];
+    entries.forEach((e, i) => {
+      rows.push(new TableRow({ children: [
+        cell(e.item, i%2===1), cell(`${e.qty} ${e.units}`.trim(), i%2===1), cell(e.lpn, i%2===1), cell(e.reason, i%2===1)
+      ]}));
+    });
+    return rows;
+  }
+
+  function makeMovRows(entries) {
+    if (!entries.length) return [new TableRow({
+      children: ['Ítem','LPN','Previous Location','New Location','Movement Reason'].map(h => hdr(h))
+    }), new TableRow({ children: [
+      new TableCell({ borders, margins: cellPad, columnSpan: 5,
+        children: [new Paragraph({ alignment: AlignmentType.CENTER,
+          children: [new TextRun({ text: 'No entries', color: '888888', size: 18, italics: true, font: 'Arial' })] })] })
+    ]})];
+    const rows = [new TableRow({ children: ['Ítem','LPN','Previous Location','New Location','Movement Reason'].map(h => hdr(h)) })];
+    entries.forEach((e, i) => {
+      rows.push(new TableRow({ children: [
+        cell(e.item, i%2===1), cell(e.lpn, i%2===1), cell('—', i%2===1), cell('—', i%2===1), cell(e.reason, i%2===1)
+      ]}));
+    });
+    return rows;
+  }
+
+  function makeCycleRows(entries) {
+    if (!entries.length) return [new TableRow({
+      children: ['Ítem','Fully Found? (SI/NO)','LPN','Detail'].map(h => hdr(h))
+    }), new TableRow({ children: [
+      new TableCell({ borders, margins: cellPad, columnSpan: 4,
+        children: [new Paragraph({ alignment: AlignmentType.CENTER,
+          children: [new TextRun({ text: 'No entries', color: '888888', size: 18, italics: true, font: 'Arial' })] })] })
+    ]})];
+    const rows = [new TableRow({ children: ['Ítem','Fully Found? (SI/NO)','LPN','Detail'].map(h => hdr(h)) })];
+    entries.forEach((e, i) => {
+      rows.push(new TableRow({ children: [
+        cell(e.item, i%2===1), cell('—', i%2===1), cell(e.lpn, i%2===1), cell(e.reason, i%2===1)
+      ]}));
+    });
+    return rows;
+  }
+
+  const adjTable = new Table({ width: { size: 9360, type: WidthType.DXA }, columnWidths: [1560,2340,1560,3900], rows: makeAdjRows(data.adj) });
+  const scrapTable = new Table({ width: { size: 9360, type: WidthType.DXA }, columnWidths: [1560,2340,1560,3900], rows: makeAdjRows(data.scrap) });
+  const movTable = new Table({ width: { size: 9360, type: WidthType.DXA }, columnWidths: [1400,1560,1600,1600,3200], rows: makeMovRows(data.mov) });
+  const cycleTable = new Table({ width: { size: 9360, type: WidthType.DXA }, columnWidths: [1560,2340,1560,3900], rows: makeCycleRows(data.cycle) });
+
+  // ── Observations paragraph ──────────────────────────
+  const obsLines = obs.split('\n').map(line =>
+    new Paragraph({ spacing: { after: 80 }, children: [new TextRun({ text: line, size: 20, font: 'Arial' })] })
+  );
+
+  const doc = new Document({
+    styles: {
+      default: { document: { run: { font: 'Arial', size: 20 } } }
+    },
+    sections: [{
+      properties: {
+        page: {
+          size: { width: 12240, height: 15840 },
+          margin: { top: 1080, right: 1080, bottom: 1080, left: 1080 }
+        }
+      },
+      children: [
+        // Title
+        new Paragraph({
+          spacing: { after: 60 },
+          children: [new TextRun({ text: 'PASS OFF — Shift Handoff Report', bold: true, size: 36, color: '1E3A5F', font: 'Arial' })]
+        }),
+        new Paragraph({
+          spacing: { after: 300 },
+          border: { bottom: { style: BorderStyle.SINGLE, size: 4, color: '1E3A5F', space: 1 } },
+          children: [new TextRun({ text: `Generated: ${new Date().toLocaleString()}`, size: 18, color: '888888', font: 'Arial' })]
+        }),
+
+        // General Info
+        sectionTitle('🧾', 'General Information'),
+        infoTable,
+
+        // Adjustments
+        sectionTitle('🔧', 'Adjustments Made'),
+        adjTable,
+
+        // Scrap
+        sectionTitle('♻️', 'Scrap Performed'),
+        scrapTable,
+
+        // Movements
+        sectionTitle('🔄', 'Movements Performed'),
+        movTable,
+
+        // Cycle Count
+        sectionTitle('📦', 'Inventory Cycle Counts'),
+        cycleTable,
+
+        // Observations
+        sectionTitle('✍️', 'General Observations'),
+        new Paragraph({
+          spacing: { after: 100 },
+          shading: { fill: 'F5F4F0', type: ShadingType.CLEAR },
+          border: { left: { style: BorderStyle.SINGLE, size: 12, color: '2E5090', space: 8 } },
+          indent: { left: 200 },
+          children: []
+        }),
+        ...obsLines
+      ]
+    }]
+  });
+
+  showToast('⏳ Generating document...');
+  Packer.toBlob(doc).then(blob => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const dateStr = gDate.replace(/\//g,'-');
+    a.download = `PassOff_${gLine.replace(/[^a-zA-Z0-9]/g,'_')}_${dateStr}.docx`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast('✅ Document downloaded!');
+  }).catch(err => {
+    console.error(err);
+    showToast('❌ Error generating document');
+  });
+}
+</script>
+</body>
+</html>
