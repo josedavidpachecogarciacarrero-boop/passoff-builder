@@ -221,6 +221,8 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 
   /* ── Observations ── */
   .obs-area { width: 100%; min-height: 100px; }
+  .manual-box { border: 1px solid var(--border); background: var(--surface2); border-radius: 10px; padding: 12px; margin-bottom: 12px; display: none; }
+  .manual-title { font-size: 11px; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 10px; }
 
   /* ── Export bar ── */
   .export-bar {
@@ -343,6 +345,47 @@ https://github.com/nodeca/pako/blob/main/LICENSE
           <input type="text" id="customReason" placeholder="Type the reason here...">
         </div>
 
+        <div class="manual-box" id="manualBox">
+          <div class="manual-title">Manual fields for Movement / Cycle Count</div>
+          <div class="info-grid">
+            <div class="field">
+              <label>Item</label>
+              <input type="text" id="manualItem" placeholder="e.g. 41008">
+            </div>
+            <div class="field">
+              <label>LPN</label>
+              <input type="text" id="manualLpn" placeholder="e.g. R152533">
+            </div>
+          </div>
+          <div id="movementFields" style="display:none;">
+            <div class="info-grid">
+              <div class="field">
+                <label>Previous Location</label>
+                <input type="text" id="movPrev" placeholder="e.g. LESL2 Kitchen">
+              </div>
+              <div class="field">
+                <label>New Location</label>
+                <input type="text" id="movNew" placeholder="e.g. LEHold Area">
+              </div>
+            </div>
+          </div>
+          <div id="cycleFields" style="display:none;">
+            <div class="info-grid">
+              <div class="field">
+                <label>Fully Found?</label>
+                <select id="cycleFound">
+                  <option value="YES">YES</option>
+                  <option value="NO">NO</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>Cycle Count Detail</label>
+                <input type="text" id="cycleDetail" placeholder="e.g. Everything was found / Not found">
+              </div>
+            </div>
+          </div>
+        </div>
+
         <button class="btn btn-primary btn-full" onclick="parseAndAdd()">+ Add to table</button>
         <div class="success-flash" id="successFlash">✓ Entry added successfully</div>
       </div>
@@ -434,11 +477,25 @@ let activeTab = 'adj';
 document.getElementById('adjReason').addEventListener('change', function() {
   document.getElementById('customGroup').style.display = this.value === 'custom' ? 'block' : 'none';
 });
+document.getElementById('adjType').addEventListener('change', updateEntryFields);
 document.getElementById('pasteInput').addEventListener('input', livePreview);
+updateEntryFields();
 
 // Set today's date
 const today = new Date();
 document.getElementById('gDate').value = (today.getMonth()+1).toString().padStart(2,'0') + '/' + today.getDate().toString().padStart(2,'0') + '/' + today.getFullYear();
+
+// ── Dynamic fields ─────────────────────────────────────
+function updateEntryFields() {
+  const type = document.getElementById('adjType').value;
+  document.getElementById('manualBox').style.display = (type === 'mov' || type === 'cycle') ? 'block' : 'none';
+  document.getElementById('movementFields').style.display = type === 'mov' ? 'block' : 'none';
+  document.getElementById('cycleFields').style.display = type === 'cycle' ? 'block' : 'none';
+}
+function clearManualFields() {
+  ['manualItem','manualLpn','movPrev','movNew','cycleDetail'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  const found = document.getElementById('cycleFound'); if (found) found.value = 'YES';
+}
 
 // ── Parser ─────────────────────────────────────────────
 function parseText(text) {
@@ -499,21 +556,33 @@ function parseAndAdd() {
   const rs = document.getElementById('adjReason').value;
   const reason = rs === 'custom' ? document.getElementById('customReason').value : rs;
   const p = parseText(text);
+  const manualItem = document.getElementById('manualItem')?.value.trim() || '';
+  const manualLpn  = document.getElementById('manualLpn')?.value.trim() || '';
+  const entry = { ...p, item: manualItem || p.item, lpn: manualLpn || p.lpn, reason };
 
-  if (!p.item && !p.qty) { showToast('⚠️ No valid data detected. Check the text.'); return; }
+  if (type === 'mov') {
+    entry.prev = document.getElementById('movPrev').value.trim();
+    entry.next = document.getElementById('movNew').value.trim();
+    if (!entry.item && !entry.lpn) { showToast('⚠️ Add at least Item or LPN for the movement.'); return; }
+    if (!entry.prev && !entry.next) { showToast('⚠️ Add previous or new location.'); return; }
+  } else if (type === 'cycle') {
+    entry.found = document.getElementById('cycleFound').value;
+    entry.detail = document.getElementById('cycleDetail').value.trim() || reason || (entry.found === 'YES' ? 'Everything was found.' : 'Not found.');
+    if (!entry.item && !entry.lpn) { showToast('⚠️ Add at least Item or LPN for the cycle count.'); return; }
+  } else {
+    if (!entry.item && !entry.qty) { showToast('⚠️ No valid data detected. Check the text.'); return; }
+  }
 
-  data[type].push({ ...p, reason });
+  data[type].push(entry);
   renderTable(type);
   updateCounts();
-
   document.getElementById('pasteInput').value = '';
   document.getElementById('previewBox').style.display = 'none';
+  if (type === 'mov' || type === 'cycle') clearManualFields();
   const fl = document.getElementById('successFlash');
-  fl.style.display = 'block';
-  fl.style.animation = 'none';
+  fl.style.display = 'block'; fl.style.animation = 'none';
   setTimeout(() => { fl.style.animation = 'fadeOut 2.5s forwards'; }, 10);
   setTimeout(() => { fl.style.display = 'none'; }, 2600);
-
   if (type !== activeTab) showTab(type);
 }
 
@@ -543,13 +612,13 @@ function renderTable(type) {
 
     if (type === 'mov') return `<tr>
       <td><strong>${e.item||'—'}</strong></td><td>${lpnHtml}</td>
-      <td>—</td><td>—</td>
+      <td>${e.prev||'—'}</td><td>${e.next||'—'}</td>
       <td style="color:var(--text2);font-size:11px">${e.reason||'—'}</td><td>${del}</td></tr>`;
 
     if (type === 'cycle') return `<tr>
-      <td><strong>${e.item||'—'}</strong></td><td>—</td>
+      <td><strong>${e.item||'—'}</strong></td><td><strong>${e.found||'—'}</strong></td>
       <td>${lpnHtml}</td>
-      <td style="color:var(--text2);font-size:11px">${e.reason||'—'}</td><td>${del}</td></tr>`;
+      <td style="color:var(--text2);font-size:11px">${e.detail||e.reason||'—'}</td><td>${del}</td></tr>`;
   }).join('');
 }
 
@@ -658,7 +727,7 @@ async function exportWord() {
     } else {
       entries.forEach((e,i) => {
         const s = i%2===1;
-        rows += row(dataCell(e.item,s,widths[0])+dataCell(e.lpn,s,widths[1])+dataCell('—',s,widths[2])+dataCell('—',s,widths[3])+dataCell(e.reason,s,widths[4]));
+        rows += row(dataCell(e.item,s,widths[0])+dataCell(e.lpn,s,widths[1])+dataCell(e.prev||'—',s,widths[2])+dataCell(e.next||'—',s,widths[3])+dataCell(e.reason,s,widths[4]));
       });
     }
     return `<w:tbl><w:tblPr><w:tblW w:w="${tw}" w:type="dxa"/>${tableBorderXml()}</w:tblPr><w:tblGrid><w:gridCol w:w="${widths[0]}"/><w:gridCol w:w="${widths[1]}"/><w:gridCol w:w="${widths[2]}"/><w:gridCol w:w="${widths[3]}"/><w:gridCol w:w="${widths[4]}"/></w:tblGrid>${rows}</w:tbl>`;
@@ -674,7 +743,7 @@ async function exportWord() {
     } else {
       entries.forEach((e,i) => {
         const s = i%2===1;
-        rows += row(dataCell(e.item,s,widths[0])+dataCell('—',s,widths[1])+dataCell(e.lpn,s,widths[2])+dataCell(e.reason,s,widths[3]));
+        rows += row(dataCell(e.item,s,widths[0])+dataCell(e.found||'—',s,widths[1])+dataCell(e.lpn,s,widths[2])+dataCell(e.detail||e.reason,s,widths[3]));
       });
     }
     return `<w:tbl><w:tblPr><w:tblW w:w="${tw}" w:type="dxa"/>${tableBorderXml()}</w:tblPr><w:tblGrid><w:gridCol w:w="${widths[0]}"/><w:gridCol w:w="${widths[1]}"/><w:gridCol w:w="${widths[2]}"/><w:gridCol w:w="${widths[3]}"/></w:tblGrid>${rows}</w:tbl>`;
